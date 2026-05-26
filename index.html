@@ -118,7 +118,36 @@
 <script>
   // 🔴🔴🔴 นำ URL ของ Web App มาใส่ที่นี่ 🔴🔴🔴
   const API_URL = 'https://script.google.com/macros/s/AKfycbwQhqSZ6FivYPmPxdyK3fnh8IQU3qJgmNVu9vdXoQgruIYQ3ESJkQd3auRkI73i-Us2/exec'; 
-  
+  // ฟังก์ชันแปลงวันที่ให้เป็นภาษาไทยและคง ค.ศ. ไว้
+function formatThaiDate(dateStr) {
+  if (!dateStr) return "";
+  try {
+    let d = new Date(dateStr);
+    
+    // ตรวจสอบว่าเป็นรูปแบบ yyyy-MM-dd หรือไม่ ถ้าใช่ให้แปลงแบบ Local Time ป้องกัน Timezone เพี้ยน
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
+      let parts = dateStr.split('-');
+      d = new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+    
+    if (isNaN(d.getTime())) return dateStr; // ถ้าแปลงไม่ได้ให้ส่งค่าเดิมกลับไป
+    
+    const weekdays = ["วันอาทิตย์", "วันจันทร์", "วันอังคาร", "วันพุธ", "วันพฤหัสบดี", "วันศุกร์", "วันเสาร์"];
+    const months = [
+      "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+      "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+    ];
+    
+    let weekday = weekdays[d.getDay()];
+    let day = d.getDate();
+    let month = months[d.getMonth()];
+    let year = d.getFullYear(); // คงไว้เป็น ค.ศ. (เช่น 2026)
+    
+    return `${weekday}ที่ ${day} ${month} ${year}`;
+  } catch (e) {
+    return dateStr;
+  }
+}
   let allReportData = [];
   let filteredData = [];
   let currentPage = 1;
@@ -230,50 +259,54 @@
   }
 
   // แสดงผลรายงานตามหน้า
-  function renderReport() {
-    const container = document.getElementById('reportContainer');
-    const pagination = document.getElementById('paginationControls');
-    
-    if (filteredData.length === 0) {
-      container.innerHTML = `<div class="alert alert-warning text-center">ไม่พบข้อมูล</div>`;
-      pagination.style.display = 'none';
-      return;
-    }
-
-    pagination.style.display = 'flex';
-    
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    const endIndex = startIndex + rowsPerPage;
-    const paginatedData = filteredData.slice(startIndex, endIndex);
-
-    let html = '';
-    paginatedData.forEach(row => {
-      html += `<div class="border rounded p-3 mb-4 bg-white shadow-sm">`;
-      html += `<h5 class="mb-3 border-bottom pb-2 text-primary">📅 วันที่: ${row.date} | ⏱️ รอบ: ${row.round}</h5>`;
-      html += `<div class="row g-3">`;
-      
-      let hasImage = false;
-      for (const [foodType, imgUrl] of Object.entries(row.images)) {
-        if (imgUrl) {
-          hasImage = true;
-          html += `
-            <div class="col-6 col-md-4 col-lg-3">
-              <div class="card shadow-sm border-0 h-100 p-2">
-                <a href="${imgUrl}" target="_blank">
-                  <img src="${imgUrl}" class="img-card" alt="${foodType}" loading="lazy">
-                </a>
-                <div class="card-title">${foodType}</div>
-              </div>
-            </div>`;
-        }
-      }
-      if(!hasImage) { html += `<div class="col-12 text-muted text-center">- ไม่มีรูปภาพ -</div>`; }
-      html += `</div></div>`;
-    });
-    
-    container.innerHTML = html;
-    updatePaginationUI();
+  // แสดงผลรายงานตามหน้า (โค้ดส่วนที่แก้ไข)
+function renderReport() {
+  const container = document.getElementById('reportContainer');
+  const pagination = document.getElementById('paginationControls');
+  
+  if (filteredData.length === 0) {
+    container.innerHTML = `<div class="alert alert-warning text-center">ไม่พบข้อมูล</div>`;
+    pagination.style.display = 'none';
+    return;
   }
+
+  pagination.style.display = 'flex';
+  
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const paginatedData = filteredData.slice(startIndex, endIndex);
+
+  let html = '';
+  paginatedData.forEach(row => {
+    html += `<div class="border rounded p-3 mb-4 bg-white shadow-sm">`;
+    
+    // 💡 แก้ไขบรรทัดนี้: เรียกใช้ formatThaiDate เพื่อเปลี่ยนการแสดงผลวันที่
+    html += `<h5 class="mb-3 border-bottom pb-2 text-primary">📅 วันที่: ${formatThaiDate(row.date)} | ⏱️ รอบ: ${row.round}</h5>`;
+    
+    html += `<div class="row g-3">`;
+    
+    let hasImage = false;
+    for (const [foodType, imgUrl] of Object.entries(row.images)) {
+      if (imgUrl) {
+        hasImage = true;
+        html += `
+          <div class="col-6 col-md-4 col-lg-3">
+            <div class="card shadow-sm border-0 h-100 p-2">
+              <a href="${imgUrl}" target="_blank">
+                <img src="${imgUrl}" class="img-card" alt="${foodType}" loading="lazy">
+              </a>
+              <div class="card-title">${foodType}</div>
+            </div>
+          </div>`;
+      }
+    }
+    if(!hasImage) { html += `<div class="col-12 text-muted text-center">- ไม่มีรูปภาพ -</div>`; }
+    html += `</div></div>`;
+  });
+  
+  container.innerHTML = html;
+  updatePaginationUI();
+}
 
   // ฟังก์ชันช่วยเหลือสำหรับ Pagination
   function updatePaginationUI() {
